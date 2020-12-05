@@ -214,7 +214,7 @@ defmodule Phoenix.LiveDashboard.PageLive do
   defp live_info(_socket, %{info: nil}), do: nil
 
   defp live_info(socket, %{info: title, node: node, params: params} = page) do
-    if component = extract_info_component(title) do
+    if component = extract_info_component(title, socket) do
       params = Map.delete(params, "info")
       path = &live_dashboard_path(socket, page.route, &1, params, Enum.into(&2, params))
 
@@ -236,12 +236,21 @@ defmodule Phoenix.LiveDashboard.PageLive do
     live_component(socket, Phoenix.LiveDashboard.ModalComponent, modal_opts)
   end
 
-  defp extract_info_component("PID<" <> _), do: Phoenix.LiveDashboard.ProcessInfoComponent
-  defp extract_info_component("Port<" <> _), do: Phoenix.LiveDashboard.PortInfoComponent
-  defp extract_info_component("Socket<" <> _), do: Phoenix.LiveDashboard.SocketInfoComponent
-  defp extract_info_component("ETS<" <> _), do: Phoenix.LiveDashboard.EtsInfoComponent
-  defp extract_info_component("App<" <> _), do: Phoenix.LiveDashboard.AppInfoComponent
-  defp extract_info_component(_), do: nil
+  defp extract_info_component("PID<" <> _, _), do: Phoenix.LiveDashboard.ProcessInfoComponent
+  defp extract_info_component("Port<" <> _, _), do: Phoenix.LiveDashboard.PortInfoComponent
+  defp extract_info_component("Socket<" <> _, _), do: Phoenix.LiveDashboard.SocketInfoComponent
+  defp extract_info_component("ETS<" <> _, _), do: Phoenix.LiveDashboard.EtsInfoComponent
+  defp extract_info_component("App<" <> _, _), do: Phoenix.LiveDashboard.AppInfoComponent
+
+  defp extract_info_component(key, %{changed: %{page: %{module: module}}}) do
+    if function_exported?(module, :component, 1) do
+      module.component(key)
+    else
+      nil
+    end
+  end
+
+  defp extract_info_component(_, _), do: nil
 
   @impl true
   def handle_info({:nodeup, _, _}, socket) do
